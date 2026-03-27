@@ -1,0 +1,123 @@
+{
+  "project_name": "instaroadtax.my",
+  "design_philosophy": {
+    "theme": "Dark Professional Corporate (Etiqa Style)",
+    "mood": "Trustworthy, Efficient, Premium, Secure",
+    "core_concept": "The Digital Safe",
+    "visual_style": "Glassmorphism on Deep Midnight Blue"
+  },
+  "typography": {
+    "font_family": {
+      "heading": "Plus Jakarta Sans, sans-serif",
+      "body": "Inter, sans-serif",
+      "mono": "JetBrains Mono, monospace"
+    },
+    "scale": {
+      "h1": "text-5xl md:text-7xl font-bold tracking-tight",
+      "h2": "text-4xl md:text-5xl font-semibold tracking-tight",
+      "h3": "text-2xl md:text-3xl font-semibold",
+      "body_lg": "text-lg md:text-xl leading-relaxed",
+      "body": "text-base leading-relaxed text-slate-300",
+      "caption": "text-sm text-slate-400"
+    }
+  },
+  "colors": {
+    "background": {
+      "main": "#0f172a",
+      "secondary": "#1e293b",
+      "glass": "rgba(30, 41, 59, 0.7)"
+    },
+    "text": {
+      "primary": "#f8fafc",
+      "secondary": "#94a3b8",
+      "muted": "#64748b"
+    },
+    "brand": {
+      "primary": "#10b981",
+      "primary_hover": "#059669",
+      "secondary": "#fbbf24",
+      "accent": "#38bdf8"
+    },
+    "status": {
+      "success": "#10b981",
+      "warning": "#f59e0b",
+      "error": "#ef4444",
+      "info": "#3b82f6"
+    }
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-lg px-6 py-3 transition-all duration-200 shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)]",
+      "secondary": "bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-lg px-6 py-3 border border-slate-700 transition-all",
+      "ghost": "text-slate-300 hover:text-white hover:bg-white/5 px-4 py-2 rounded-lg transition-colors"
+    },
+    "cards": {
+      "glass": "bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-2xl shadow-xl hover:border-emerald-500/30 transition-all duration-300",
+      "solid": "bg-slate-800 border border-slate-700 rounded-xl p-6"
+    },
+    "inputs": {
+      "default": "bg-slate-950/50 border border-slate-700 text-white rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all placeholder:text-slate-500",
+      "file_upload": "border-2 border-dashed border-slate-600 rounded-xl p-8 text-center hover:border-emerald-500 hover:bg-slate-900/50 transition-all cursor-pointer group"
+    }
+  },
+  "layout_strategies": {
+    "spacing": "Relaxed. Use p-8 to p-12 for sections. Gap-6 to Gap-8 for grids.",
+    "container": "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8",
+    "grid_bento": "grid grid-cols-1 md:grid-cols-3 gap-6",
+    "section_hero": "min-h-[90vh] flex items-center relative overflow-hidden"
+  },
+  "assets": {
+    "images": {
+      "hero_bg": {
+        "url": "https://images.unsplash.com/photo-1698533188457-58dc4a904efd?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1ODh8MHwxfHNlYXJjaHwyfHxzaGlueSUyMGNhciUyMGJsYWNrJTIwYmFja2dyb3VuZCUyMHN0dWRpb3xlbnwwfHx8fDE3NzI0NDg3NDh8MA&ixlib=rb-4.1.0&q=85",
+        "alt": "Sleek black luxury car at night",
+        "usage": "Hero section background or main visual"
+      },
+      "features_mechanic": {
+        "url": "https://images.unsplash.com/photo-1708745427274-d5de5122fd57?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1OTV8MHwxfHNlYXJjaHwyfHxtZWNoYW5pYyUyMGNoZWNraW5nJTIwY2FyJTIwZW5naW5lJTIwbmlnaHR8ZW58MHx8fHwxNzcyNDQ4NzM5fDA&ixlib=rb-4.1.0&q=85",
+        "alt": "Mechanic checking car engine",
+        "usage": "Roadside assistance feature section"
+      },
+      "trust_family": {
+        "url": "https://images.unsplash.com/photo-1761047321481-abbdcfb7ff00?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1NzZ8MHwxfHNlYXJjaHwxfHxoYXBweSUyMGFzaWFuJTIwZmFtaWx5JTIwZHJpdmluZyUyMGNhcnxlbnwwfHx8fDE3NzI0NDg3MjV8MA&ixlib=rb-4.1.0&q=85",
+        "alt": "Happy Asian family in car",
+        "usage": "Testimonial or Trust section"
+      }
+    },
+    "icons": {
+      "library": "lucide-react",
+      "mapping": {
+        "shield": "ShieldCheck",
+        "car": "Car",
+        "document": "FileText",
+        "payment": "CreditCard",
+        "user": "User",
+        "phone": "Phone",
+        "upload": "UploadCloud",
+        "check": "CheckCircle2",
+        "clock": "Clock"
+      }
+    }
+  },
+  "specific_instructions": {
+    "header_nav": "Fixed glassmorphic header (bg-slate-900/80 backdrop-blur-md). Logo left, Navigation right.",
+    "footer": "Dark slate background (bg-slate-950). Simple links. Copyright.",
+    "forms": "Multi-step wizard feel. Step 1: Vehicle Info. Step 2: Owner Info. Step 3: Uploads. Step 4: Payment. Use clear progress indicators.",
+    "admin_dashboard": "Sidebar layout. Main content area with summary cards (Total Revenue, Active Policies) and a Data Table for orders.",
+    "animations": "Use framer-motion for smooth entrance. Fade-in up for cards. Stagger children for lists."
+  },
+  "accessibility": {
+    "focus_states": "ring-2 ring-emerald-500 ring-offset-2 ring-offset-slate-900",
+    "contrast_check": "Ensure text-slate-300 has sufficient contrast on slate-900. Use text-white for critical info."
+  },
+  "universal_guidelines": [
+    "Do not use generic centered layouts. Use asymmetry.",
+    "Create depth through layered design elements with z-index hierarchy.",
+    "Use glass-morphism effects with backdrop filters (12-24px blur).",
+    "Every interaction needs micro-animations.",
+    "Use 2-3x more spacing than feels comfortable.",
+    "Subtle grain textures, noise overlays for premium feel.",
+    "Interactive elements MUST include data-testid attributes.",
+    "Use sonner for toasts."
+  ]
+}
