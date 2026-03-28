@@ -2,10 +2,8 @@ import { useEffect, useState } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { CheckCircle2, XCircle, Loader2, Home, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { API } from "@/lib/api";
 import axios from "axios";
-
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "http://127.0.0.1:8001";
-const API = `${BACKEND_URL}/api`;
 
 const PaymentResult = () => {
   const [searchParams] = useSearchParams();
@@ -13,26 +11,29 @@ const PaymentResult = () => {
   const [loading, setLoading] = useState(true);
   
   const paymentId = searchParams.get("payment_id");
+  const sessionId = searchParams.get("session_id");
   const status = searchParams.get("status");
   
   useEffect(() => {
+    const verifyPayment = async () => {
+      try {
+        const response = await axios.post(`${API}/payments/${paymentId}/verify`, null, {
+          params: sessionId ? { session_id: sessionId } : undefined,
+        });
+        setPayment(response.data);
+      } catch (error) {
+        console.error("Error verifying payment:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     if (paymentId) {
       verifyPayment();
     } else {
       setLoading(false);
     }
-  }, [paymentId]);
-  
-  const verifyPayment = async () => {
-    try {
-      const response = await axios.post(`${API}/payments/${paymentId}/verify`);
-      setPayment(response.data);
-    } catch (error) {
-      console.error("Error verifying payment:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [paymentId, sessionId]);
   
   if (loading) {
     return (
@@ -45,7 +46,9 @@ const PaymentResult = () => {
     );
   }
   
-  const isSuccess = status === "success" || payment?.status === "paid";
+  const resolvedStatus = payment?.status || status;
+  const isSuccess = resolvedStatus === "paid" || status === "success";
+  const isCancelled = resolvedStatus === "cancelled" || status === "cancelled";
   
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center py-8" data-testid="payment-result-page">
@@ -102,9 +105,13 @@ const PaymentResult = () => {
               <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
                 <XCircle className="w-10 h-10 text-red-500" />
               </div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">Payment Failed</h1>
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                {isCancelled ? "Payment Cancelled" : "Payment Failed"}
+              </h1>
               <p className="text-gray-600 mb-6">
-                Your payment could not be processed. Please try again.
+                {isCancelled
+                  ? "Your Stripe checkout was cancelled before payment was completed."
+                  : "Your payment could not be processed. Please try again."}
               </p>
               
               <div className="flex flex-col gap-3">

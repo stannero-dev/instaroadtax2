@@ -1,0 +1,9 @@
+instaroadtax.my, www.instaroadtax.my {
+    encode gzip
+    reverse_proxy frontend:80
+}
+
+api.instaroadtax.my {
+    encode gzip
+    reverse_proxy backend:8000
+}

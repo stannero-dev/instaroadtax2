@@ -5,10 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { API } from "@/lib/api";
 import axios from "axios";
-
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "http://127.0.0.1:8001";
-const API = `${BACKEND_URL}/api`;
 
 const statusInfo = {
   new: { label: "New", color: "bg-amber-100 text-amber-700", icon: Clock, description: "Your inquiry has been received. We will review it shortly." },

@@ -1,39 +1,36 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { CreditCard, ChevronLeft, Loader2, ShieldCheck, Lock, Car } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { API } from "@/lib/api";
 import axios from "axios";
-
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "http://127.0.0.1:8001";
-const API = `${BACKEND_URL}/api`;
 
 const PaymentPage = () => {
   const { inquiryId } = useParams();
-  const navigate = useNavigate();
   const [inquiry, setInquiry] = useState(null);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   
   useEffect(() => {
+    const fetchInquiry = async () => {
+      try {
+        const response = await axios.get(`${API}/inquiries/${inquiryId}`);
+        setInquiry(response.data);
+        
+        if (response.data.status !== "quoted") {
+          toast.error("This inquiry does not have a quotation yet");
+        }
+      } catch (error) {
+        console.error("Error fetching inquiry:", error);
+        toast.error("Failed to load inquiry details");
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchInquiry();
   }, [inquiryId]);
-  
-  const fetchInquiry = async () => {
-    try {
-      const response = await axios.get(`${API}/inquiries/${inquiryId}`);
-      setInquiry(response.data);
-      
-      if (response.data.status !== "quoted") {
-        toast.error("This inquiry does not have a quotation yet");
-      }
-    } catch (error) {
-      console.error("Error fetching inquiry:", error);
-      toast.error("Failed to load inquiry details");
-    } finally {
-      setLoading(false);
-    }
-  };
   
   const handlePayment = async () => {
     if (!inquiry?.quotation) {
@@ -48,24 +45,16 @@ const PaymentPage = () => {
         inquiry_id: inquiryId,
         amount: inquiry.quotation.total_amount,
         currency: "MYR",
-        return_url: `${window.location.origin}/payment-result`
+        return_url: `${window.location.origin}/#/payment-result`
       });
       
-      if (paymentResponse.data.success) {
-        const paymentId = paymentResponse.data.payment_id;
-        
+      if (paymentResponse.data.success && paymentResponse.data.payment_url) {
         toast.info("Redirecting to payment gateway...");
-        
-        // Simulate payment processing
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        // Simulate successful payment
-        await axios.post(`${API}/payments/${paymentId}/simulate`, null, {
-          params: { status: "paid" }
-        });
-        
-        navigate(`/payment-result?payment_id=${paymentId}&status=success`);
+        window.location.href = paymentResponse.data.payment_url;
+        return;
       }
+
+      throw new Error("Payment URL was not returned by the server");
     } catch (error) {
       console.error("Error processing payment:", error);
       toast.error(error.response?.data?.detail || "Payment failed. Please try again.");
@@ -173,6 +162,10 @@ const PaymentPage = () => {
             <Lock className="w-4 h-4" />
             <span>Secure payment</span>
           </div>
+
+          <p className="text-center text-xs text-gray-500 mb-6">
+            Stripe sandbox checkout will open in test mode for card payment.
+          </p>
           
           <Button
             onClick={handlePayment}

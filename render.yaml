@@ -1,0 +1,38 @@
+services:
+  - name: instaroadtax-api
+    type: web
+    runtime: python
+    plan: starter
+    region: singapore
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn server:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/
+    autoDeployTrigger: commit
+    disk:
+      name: instaroadtax-storage
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: MONGO_URL
+        sync: false
+      - key: DB_NAME
+        sync: false
+      - key: ADMIN_USERNAME
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: STORAGE_DIR
+        value: /var/data
+      - key: STORAGE_FILE
+        value: /var/data/local_storage.json
+      - key: UPLOAD_DIR
+        value: /var/data/uploads
+      - key: STRIPE_PUBLISHABLE_KEY
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false

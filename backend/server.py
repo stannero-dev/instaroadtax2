@@ -3,6 +3,7 @@ from fastapi.responses import JSONResponse, FileResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
+import asyncio
 import os
 import logging
 from pathlib import Path
@@ -14,19 +15,29 @@ import hashlib
 import hmac
 import base64
 import json
+from decimal import Decimal, ROUND_HALF_UP
+import requests
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
+
+def _storage_path(env_key: str, default_path: Path) -> Path:
+    configured = os.environ.get(env_key)
+    return Path(configured) if configured else default_path
+
 # MongoDB connection
-mongo_url = os.environ['MONGO_URL']
+mongo_url = os.environ.get("MONGO_URL", "mongodb://127.0.0.1:27017")
 client = AsyncIOMotorClient(
     mongo_url,
     serverSelectionTimeoutMS=1500,
     connectTimeoutMS=1500,
 )
-db = client[os.environ['DB_NAME']]
-STORAGE_FILE = ROOT_DIR / "local_storage.json"
+db = client[os.environ.get("DB_NAME", "instaroadtax")]
+STORAGE_DIR = _storage_path("STORAGE_DIR", ROOT_DIR)
+STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+STORAGE_FILE = _storage_path("STORAGE_FILE", STORAGE_DIR / "local_storage.json")
+STORAGE_FILE.parent.mkdir(parents=True, exist_ok=True)
 
 
 def _load_local_storage():
@@ -147,6 +158,10 @@ async def find_email_records():
 # Payment Gateway config (mocked)
 GATEWAY_API_KEY = os.environ.get('GATEWAY_API_KEY', 'mock_api_key_12345')
 GATEWAY_SECRET = os.environ.get('GATEWAY_SECRET', 'mock_secret_key_67890')
+STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "").strip()
+STRIPE_PUBLISHABLE_KEY = os.environ.get("STRIPE_PUBLISHABLE_KEY", "").strip()
+STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "").strip()
+STRIPE_API_BASE = "https://api.stripe.com/v1"
 ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'admin')
 ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'admin123')
 LEGACY_ADMIN_CREDENTIALS = {
@@ -162,8 +177,8 @@ app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
 # Upload directory
-UPLOAD_DIR = ROOT_DIR / "uploads"
-UPLOAD_DIR.mkdir(exist_ok=True)
+UPLOAD_DIR = _storage_path("UPLOAD_DIR", ROOT_DIR / "uploads")
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 # ============== MODELS ==============
 
@@ -223,9 +238,13 @@ class Payment(BaseModel):
     inquiry_id: str
     amount: float
     currency: str = "MYR"
+    gateway: str = "mock"
     status: str = "pending"  # pending, paid, failed, refunded
     payment_url: Optional[str] = None
     transaction_id: Optional[str] = None
+    stripe_session_id: Optional[str] = None
+    stripe_payment_intent_id: Optional[str] = None
+    stripe_refund_id: Optional[str] = None
     gateway_response: Optional[dict] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -271,6 +290,131 @@ def verify_webhook_signature(payload: dict, signature: str) -> bool:
     """Verify webhook signature"""
     expected_signature = generate_payment_signature(payload)
     return hmac.compare_digest(expected_signature, signature)
+
+
+def is_stripe_configured() -> bool:
+    return bool(STRIPE_SECRET_KEY)
+
+
+def amount_to_minor_units(amount: float, currency: str) -> int:
+    normalized = Decimal(str(amount)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    return int(normalized * 100)
+
+
+async def stripe_request(method: str, path: str, data: Optional[dict] = None, params=None) -> dict:
+    if not is_stripe_configured():
+        raise HTTPException(status_code=503, detail="Stripe sandbox is not configured on the server")
+
+    headers = {
+        "Authorization": f"Bearer {STRIPE_SECRET_KEY}",
+    }
+
+    response = await asyncio.to_thread(
+        requests.request,
+        method,
+        f"{STRIPE_API_BASE}{path}",
+        headers=headers,
+        data=data,
+        params=params,
+        timeout=30,
+    )
+
+    try:
+        payload = response.json()
+    except ValueError:
+        payload = {"error": {"message": response.text or "Stripe request failed"}}
+
+    if response.status_code >= 400:
+        message = payload.get("error", {}).get("message", "Stripe request failed")
+        raise HTTPException(status_code=502, detail=f"Stripe error: {message}")
+
+    return payload
+
+
+def map_stripe_session_status(session: dict) -> str:
+    payment_status = session.get("payment_status")
+    session_status = session.get("status")
+
+    if payment_status in {"paid", "no_payment_required"}:
+        return "paid"
+    if session_status == "expired":
+        return "failed"
+    return "pending"
+
+
+def verify_stripe_signature(raw_body: bytes, signature_header: str) -> bool:
+    if not STRIPE_WEBHOOK_SECRET or not signature_header:
+        return False
+
+    parts = {}
+    for item in signature_header.split(","):
+        key, _, value = item.partition("=")
+        if key and value:
+            parts.setdefault(key, []).append(value)
+
+    timestamp = parts.get("t", [None])[0]
+    signatures = parts.get("v1", [])
+    if not timestamp or not signatures:
+        return False
+
+    signed_payload = f"{timestamp}.{raw_body.decode('utf-8')}"
+    expected = hmac.new(
+        STRIPE_WEBHOOK_SECRET.encode(),
+        signed_payload.encode(),
+        hashlib.sha256,
+    ).hexdigest()
+    return any(hmac.compare_digest(expected, signature) for signature in signatures)
+
+
+async def sync_payment_status(payment: dict, status: str, extra_updates: Optional[dict] = None):
+    update_data = {
+        "status": status,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    if extra_updates:
+        update_data.update(extra_updates)
+
+    await update_payment(payment["id"], update_data)
+
+    if status == "paid":
+        await update_inquiry(
+            payment["inquiry_id"],
+            {"status": "paid", "updated_at": datetime.now(timezone.utc).isoformat()},
+        )
+    elif status == "refunded":
+        await update_inquiry(
+            payment["inquiry_id"],
+            {"status": "refunded", "updated_at": datetime.now(timezone.utc).isoformat()},
+        )
+
+
+async def sync_payment_from_stripe_session(payment: dict, session: dict) -> dict:
+    mapped_status = map_stripe_session_status(session)
+    payment_intent = session.get("payment_intent")
+
+    updates = {
+        "gateway_response": session,
+        "transaction_id": session.get("id") or payment.get("transaction_id"),
+        "stripe_session_id": session.get("id") or payment.get("stripe_session_id"),
+    }
+
+    if isinstance(payment_intent, dict):
+        updates["stripe_payment_intent_id"] = payment_intent.get("id")
+    elif isinstance(payment_intent, str):
+        updates["stripe_payment_intent_id"] = payment_intent
+
+    await sync_payment_status(payment, mapped_status, updates)
+    refreshed_payment = await find_payment_by_id(payment["id"])
+
+    return {
+        "success": True,
+        "payment_id": payment["id"],
+        "status": mapped_status,
+        "transaction_id": (
+            refreshed_payment or {}
+        ).get("transaction_id"),
+        "amount": payment.get("amount"),
+    }
 
 # ============== API ROUTES ==============
 
@@ -428,22 +572,55 @@ async def create_payment(payment_data: PaymentCreate):
     
     if inquiry.get("status") != "quoted":
         raise HTTPException(status_code=400, detail="Inquiry must have a quotation first")
-    
-    transaction_id = f"TXN_{uuid.uuid4().hex[:12].upper()}"
-    
+
+    if not is_stripe_configured():
+        raise HTTPException(status_code=503, detail="Stripe sandbox is not configured on the server")
+
+    quoted_amount = (inquiry.get("quotation") or {}).get("total_amount")
+    if quoted_amount is None:
+        raise HTTPException(status_code=400, detail="Inquiry quotation amount is missing")
+
+    if abs(float(quoted_amount) - float(payment_data.amount)) > 0.01:
+        raise HTTPException(status_code=400, detail="Payment amount does not match the approved quotation")
+
     payment = Payment(
         inquiry_id=payment_data.inquiry_id,
-        amount=payment_data.amount,
+        amount=float(quoted_amount),
         currency=payment_data.currency,
-        transaction_id=transaction_id
+        gateway="stripe",
     )
-    
-    payment_token = base64.urlsafe_b64encode(
-        f"{payment.id}:{transaction_id}".encode()
-    ).decode()
-    
-    payment_url = f"{payment_data.return_url}?payment_id={payment.id}&token={payment_token}&status=pending"
-    payment.payment_url = payment_url
+
+    session = await stripe_request(
+        "POST",
+        "/checkout/sessions",
+        data={
+            "mode": "payment",
+            "success_url": f"{payment_data.return_url}?payment_id={payment.id}&session_id={{CHECKOUT_SESSION_ID}}",
+            "cancel_url": f"{payment_data.return_url}?payment_id={payment.id}&status=cancelled",
+            "customer_email": inquiry["customer_info"]["email"],
+            "payment_method_types[0]": "card",
+            "line_items[0][quantity]": "1",
+            "line_items[0][price_data][currency]": payment.currency.lower(),
+            "line_items[0][price_data][unit_amount]": str(amount_to_minor_units(payment.amount, payment.currency)),
+            "line_items[0][price_data][product_data][name]": "InstaRoadTax Insurance & Road Tax",
+            "line_items[0][price_data][product_data][description]": (
+                f"{inquiry['vehicle_info']['vehicle_number']} - {inquiry['quotation']['insurance_provider']}"
+            ),
+            "metadata[payment_id]": payment.id,
+            "metadata[inquiry_id]": payment.inquiry_id,
+            "payment_intent_data[metadata][payment_id]": payment.id,
+            "payment_intent_data[metadata][inquiry_id]": payment.inquiry_id,
+        },
+    )
+
+    payment.payment_url = session.get("url")
+    payment.stripe_session_id = session.get("id")
+    payment.transaction_id = session.get("id")
+    payment.gateway_response = {
+        "checkout_session_id": session.get("id"),
+        "payment_status": session.get("payment_status"),
+        "status": session.get("status"),
+    }
     
     doc = payment.model_dump()
     doc['created_at'] = doc['created_at'].isoformat()
@@ -454,46 +631,69 @@ async def create_payment(payment_data: PaymentCreate):
     return {
         "success": True,
         "payment_id": payment.id,
-        "payment_url": payment_url,
-        "transaction_id": transaction_id,
-        "message": "Payment created. Redirect user to payment_url"
+        "payment_url": payment.payment_url,
+        "transaction_id": payment.transaction_id,
+        "publishable_key": STRIPE_PUBLISHABLE_KEY or None,
+        "message": "Stripe checkout session created"
     }
 
 @api_router.post("/payments/webhook")
 async def payment_webhook(request: Request):
     """Handle payment gateway webhook"""
     try:
-        body = await request.json()
-        signature = request.headers.get("X-Gateway-Signature", "")
-        
+        raw_body = await request.body()
+        stripe_signature = request.headers.get("Stripe-Signature", "")
+
+        if stripe_signature:
+            if not verify_stripe_signature(raw_body, stripe_signature):
+                raise HTTPException(status_code=400, detail="Invalid Stripe webhook signature")
+
+            event = json.loads(raw_body.decode("utf-8"))
+            event_type = event.get("type")
+            event_object = (event.get("data") or {}).get("object", {})
+            metadata = event_object.get("metadata") or {}
+            payment_id = metadata.get("payment_id")
+
+            if not payment_id:
+                return {"success": True, "message": "Stripe webhook ignored"}
+
+            payment = await find_payment_by_id(payment_id)
+            if not payment:
+                raise HTTPException(status_code=404, detail="Payment not found")
+
+            if event_type == "checkout.session.completed":
+                await sync_payment_from_stripe_session(payment, event_object)
+            elif event_type == "checkout.session.expired":
+                await sync_payment_status(
+                    payment,
+                    "failed",
+                    {
+                        "gateway_response": event_object,
+                        "stripe_session_id": event_object.get("id") or payment.get("stripe_session_id"),
+                        "transaction_id": event_object.get("id") or payment.get("transaction_id"),
+                    },
+                )
+            elif event_type == "charge.refunded":
+                await sync_payment_status(payment, "refunded", {"gateway_response": event_object})
+
+            return {"success": True, "message": "Stripe webhook processed"}
+
+        body = json.loads(raw_body.decode("utf-8"))
         payment_id = body.get("payment_id")
         status = body.get("status")
-        
+
         if not payment_id or not status:
             raise HTTPException(status_code=400, detail="Invalid webhook payload")
-        
-        updated = await update_payment(
-            payment_id,
-            {
-                "status": status,
-                "gateway_response": body,
-                "updated_at": datetime.now(timezone.utc).isoformat(),
-            },
-        )
-        
-        if not updated:
+
+        payment = await find_payment_by_id(payment_id)
+        if not payment:
             raise HTTPException(status_code=404, detail="Payment not found")
-        
-        if status == "paid":
-            payment = await find_payment_by_id(payment_id)
-            if payment:
-                await update_inquiry(
-                    payment["inquiry_id"],
-                    {"status": "paid", "updated_at": datetime.now(timezone.utc).isoformat()},
-                )
-        
+
+        await sync_payment_status(payment, status, {"gateway_response": body})
         return {"success": True, "message": "Webhook processed"}
     
+    except HTTPException:
+        raise
     except Exception as e:
         logging.error(f"Webhook error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -513,12 +713,22 @@ async def get_payment(payment_id: str):
     return payment
 
 @api_router.post("/payments/{payment_id}/verify")
-async def verify_payment(payment_id: str):
+async def verify_payment(payment_id: str, session_id: Optional[str] = None):
     """Verify payment status"""
     payment = await find_payment_by_id(payment_id)
     if not payment:
         raise HTTPException(status_code=404, detail="Payment not found")
-    
+
+    if payment.get("gateway") == "stripe" and is_stripe_configured():
+        checkout_session_id = session_id or payment.get("stripe_session_id")
+        if checkout_session_id:
+            session = await stripe_request(
+                "GET",
+                f"/checkout/sessions/{checkout_session_id}",
+                params=[("expand[]", "payment_intent")],
+            )
+            return await sync_payment_from_stripe_session(payment, session)
+
     return {
         "success": True,
         "payment_id": payment_id,
@@ -559,17 +769,41 @@ async def refund_payment(payment_id: str):
     
     if payment.get("status") != "paid":
         raise HTTPException(status_code=400, detail="Can only refund paid payments")
-    
-    await update_payment(
-        payment_id,
-        {"status": "refunded", "updated_at": datetime.now(timezone.utc).isoformat()},
-    )
-    
-    await update_inquiry(
-        payment["inquiry_id"],
-        {"status": "refunded", "updated_at": datetime.now(timezone.utc).isoformat()},
-    )
-    
+
+    if payment.get("gateway") == "stripe":
+        payment_intent_id = payment.get("stripe_payment_intent_id")
+        if not payment_intent_id and payment.get("stripe_session_id"):
+            session = await stripe_request(
+                "GET",
+                f"/checkout/sessions/{payment['stripe_session_id']}",
+                params=[("expand[]", "payment_intent")],
+            )
+            payment_intent = session.get("payment_intent")
+            if isinstance(payment_intent, dict):
+                payment_intent_id = payment_intent.get("id")
+            elif isinstance(payment_intent, str):
+                payment_intent_id = payment_intent
+
+        if not payment_intent_id:
+            raise HTTPException(status_code=400, detail="Stripe payment intent not found for refund")
+
+        refund = await stripe_request(
+            "POST",
+            "/refunds",
+            data={"payment_intent": payment_intent_id},
+        )
+        await sync_payment_status(
+            payment,
+            "refunded",
+            {
+                "stripe_payment_intent_id": payment_intent_id,
+                "stripe_refund_id": refund.get("id"),
+                "gateway_response": refund,
+            },
+        )
+        return {"success": True, "message": "Stripe refund created"}
+
+    await sync_payment_status(payment, "refunded")
     return {"success": True, "message": "Payment refunded"}
 
 # ============== FILE UPLOAD ==============
