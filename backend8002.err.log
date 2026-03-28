@@ -1,0 +1,104 @@
+INFO:     Started server process [73388]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8002 (Press CTRL+C to quit)
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "c:\Users\User\Desktop\CODEX\instaroadtax\backend\venv\Lib\site-packages\uvicorn\protocols\http\h11_impl.py", line 408, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        self.scope, self.receive, self.send
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "c:\Users\User\Desktop\CODEX\instaroadtax\backend\venv\Lib\site-packages\uvicorn\middleware\proxy_headers.py", line 84, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\User\Desktop\CODEX\instaroadtax\backend\venv\Lib\site-packages\fastapi\applications.py", line 1054, in __call__
+    await super().__call__(scope, receive, send)
+  File "c:\Users\User\Desktop\CODEX\instaroadtax\backend\venv\Lib\site-packages\starlette\applications.py", line 123, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "c:\Users\User\Desktop\CODEX\instaroadtax\backend\venv\Lib\site-packages\starlette\middleware\errors.py", line 186, in __call__
+    raise exc
+  File "c:\Users\User\Desktop\CODEX\instaroadtax\backend\venv\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "c:\Users\User\Desktop\CODEX\instaroadtax\backend\venv\Lib\site-packages\starlette\middleware\cors.py", line 85, in __call__
+    await self.app(scope, receive, send)
+  File "c:\Users\User\Desktop\CODEX\instaroadtax\backend\venv\Lib\site-packages\starlette\middleware\exceptions.py", line 65, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "c:\Users\User\Desktop\CODEX\instaroadtax\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 64, in wrapped_app
+    raise exc
+  File "c:\Users\User\Desktop\CODEX\instaroadtax\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    await app(scope, receive, sender)
+  File "c:\Users\User\Desktop\CODEX\instaroadtax\backend\venv\Lib\site-packages\starlette\routing.py", line 756, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "c:\Users\User\Desktop\CODEX\instaroadtax\backend\venv\Lib\site-packages\starlette\routing.py", line 776, in app
+    await route.handle(scope, receive, send)
+  File "c:\Users\User\Desktop\CODEX\instaroadtax\backend\venv\Lib\site-packages\starlette\routing.py", line 297, in handle
+    await self.app(scope, receive, send)
+  File "c:\Users\User\Desktop\CODEX\instaroadtax\backend\venv\Lib\site-packages\starlette\routing.py", line 77, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "c:\Users\User\Desktop\CODEX\instaroadtax\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 64, in wrapped_app
+    raise exc
+  File "c:\Users\User\Desktop\CODEX\instaroadtax\backend\venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    await app(scope, receive, sender)
+  File "c:\Users\User\Desktop\CODEX\instaroadtax\backend\venv\Lib\site-packages\starlette\routing.py", line 72, in app
+    response = await func(request)
+               ^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\User\Desktop\CODEX\instaroadtax\backend\venv\Lib\site-packages\fastapi\routing.py", line 278, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        dependant=dependant, values=values, is_coroutine=is_coroutine
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "c:\Users\User\Desktop\CODEX\instaroadtax\backend\venv\Lib\site-packages\fastapi\routing.py", line 191, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\User\Desktop\CODEX\instaroadtax\backend\server.py", line 275, in create_inquiry
+    await db.inquiries.insert_one(doc)
+  File "C:\Python314\Lib\concurrent\futures\thread.py", line 86, in run
+    result = ctx.run(self.task)
+  File "C:\Python314\Lib\concurrent\futures\thread.py", line 73, in run
+    return fn(*args, **kwargs)
+  File "c:\Users\User\Desktop\CODEX\instaroadtax\backend\venv\Lib\site-packages\pymongo\collection.py", line 671, in insert_one
+    self._insert_one(
+    ~~~~~~~~~~~~~~~~^
+        document,
+        ^^^^^^^^^
+    ...<5 lines>...
+        comment=comment,
+        ^^^^^^^^^^^^^^^^
+    ),
+    ^
+  File "c:\Users\User\Desktop\CODEX\instaroadtax\backend\venv\Lib\site-packages\pymongo\collection.py", line 611, in _insert_one
+    self.__database.client._retryable_write(acknowledged, _insert_command, session)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\User\Desktop\CODEX\instaroadtax\backend\venv\Lib\site-packages\pymongo\mongo_client.py", line 1567, in _retryable_write
+    with self._tmp_session(session) as s:
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Python314\Lib\contextlib.py", line 141, in __enter__
+    return next(self.gen)
+  File "c:\Users\User\Desktop\CODEX\instaroadtax\backend\venv\Lib\site-packages\pymongo\mongo_client.py", line 1885, in _tmp_session
+    s = self._ensure_session(session)
+  File "c:\Users\User\Desktop\CODEX\instaroadtax\backend\venv\Lib\site-packages\pymongo\mongo_client.py", line 1868, in _ensure_session
+    return self.__start_session(True, causal_consistency=False)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\User\Desktop\CODEX\instaroadtax\backend\venv\Lib\site-packages\pymongo\mongo_client.py", line 1811, in __start_session
+    self._topology._check_implicit_session_support()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "c:\Users\User\Desktop\CODEX\instaroadtax\backend\venv\Lib\site-packages\pymongo\topology.py", line 583, in _check_implicit_session_support
+    self._check_session_support()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "c:\Users\User\Desktop\CODEX\instaroadtax\backend\venv\Lib\site-packages\pymongo\topology.py", line 599, in _check_session_support
+    self._select_servers_loop(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        readable_server_selector, self.get_server_selection_timeout(), None
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "c:\Users\User\Desktop\CODEX\instaroadtax\backend\venv\Lib\site-packages\pymongo\topology.py", line 269, in _select_servers_loop
+    raise ServerSelectionTimeoutError(
+        f"{self._error_message(selector)}, Timeout: {timeout}s, Topology Description: {self.description!r}"
+    )
+pymongo.errors.ServerSelectionTimeoutError: localhost:27017: timed out, Timeout: 1.5s, Topology Description: <TopologyDescription id: 69c7ee4dd78abc7488caaebd, topology_type: Unknown, servers: [<ServerDescription ('localhost', 27017) server_type: Unknown, rtt: None, error=NetworkTimeout('localhost:27017: timed out')>]>

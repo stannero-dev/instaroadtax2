@@ -1,0 +1,72 @@
+{
+  "project": {
+    "enabled": true,
+    "lastGenerated": "2026-03-28T15:37:52.848Z",
+    "observationCount": 120,
+    "skillCount": 0,
+    "domain": "project",
+    "triggerGlobs": [
+      "**/*"
+    ],
+    "description": "Project for instaroadtax. 20 gotchas, 31 conventions, 8 fixes."
+  },
+  "config": {
+    "enabled": true,
+    "lastGenerated": "2026-03-28T15:37:52.847Z",
+    "observationCount": 7,
+    "skillCount": 0,
+    "domain": "config",
+    "triggerGlobs": [
+      "**/*.yaml",
+      "**/*.yml",
+      "**/*.json",
+      "**/*.toml"
+    ],
+    "description": "Config for instaroadtax. 1 conventions, 1 fixes."
+  },
+  "python": {
+    "enabled": true,
+    "lastGenerated": "2026-03-28T15:37:52.847Z",
+    "observationCount": 13,
+    "skillCount": 0,
+    "domain": "python",
+    "triggerGlobs": [
+      "**/*.py"
+    ],
+    "description": "Python for instaroadtax. 1 gotchas, 1 conventions, 1 fixes."
+  },
+  "html": {
+    "enabled": true,
+    "lastGenerated": "2026-03-28T15:37:52.849Z",
+    "observationCount": 2,
+    "skillCount": 0,
+    "domain": "html",
+    "triggerGlobs": [
+      "**/*.html"
+    ],
+    "description": "Html for instaroadtax. ."
+  },
+  "javascript": {
+    "enabled": true,
+    "lastGenerated": "2026-03-28T15:37:52.848Z",
+    "observationCount": 4,
+    "skillCount": 0,
+    "domain": "javascript",
+    "triggerGlobs": [
+      "**/*.js",
+      "**/*.jsx"
+    ],
+    "description": "Javascript for instaroadtax. ."
+  },
+  "javascript-react": {
+    "enabled": true,
+    "lastGenerated": "2026-03-28T15:37:52.846Z",
+    "observationCount": 14,
+    "skillCount": 0,
+    "domain": "javascript-react",
+    "triggerGlobs": [
+      "**/*.jsx"
+    ],
+    "description": "Javascript React for instaroadtax. 1 conventions, 5 fixes."
+  }
+}

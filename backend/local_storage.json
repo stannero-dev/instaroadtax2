@@ -1,0 +1,177 @@
+{
+  "inquiries": [
+    {
+      "id": "74026857-2026-4301-9f3d-2fd08453eb2d",
+      "insurance_type": "car",
+      "vehicle_info": {
+        "vehicle_number": "WXY1234",
+        "ownership_type": "personal",
+        "postcode": "50000",
+        "state": null
+      },
+      "customer_info": {
+        "nric_number": "901234-01-1234",
+        "full_name": null,
+        "phone": "0123456789",
+        "email": "test@example.com"
+      },
+      "uploaded_documents": [],
+      "notes": "sync test",
+      "status": "new",
+      "quotation": null,
+      "admin_notes": null,
+      "created_at": "2026-03-28T15:12:48.826393+00:00",
+      "updated_at": "2026-03-28T15:12:48.826396+00:00"
+    },
+    {
+      "id": "3e7bee9e-895a-48cf-adce-2437be1c5580",
+      "insurance_type": "car",
+      "vehicle_info": {
+        "vehicle_number": "TEST1234",
+        "ownership_type": "personal",
+        "postcode": "50000",
+        "state": null
+      },
+      "customer_info": {
+        "nric_number": "901234-01-1234",
+        "full_name": null,
+        "phone": "0123456789",
+        "email": "test2@example.com"
+      },
+      "uploaded_documents": [],
+      "notes": "live api test",
+      "status": "new",
+      "quotation": null,
+      "admin_notes": null,
+      "created_at": "2026-03-28T15:13:58.018701+00:00",
+      "updated_at": "2026-03-28T15:13:58.018706+00:00"
+    },
+    {
+      "id": "e9097185-9b19-408e-a7bd-546d4955f76e",
+      "insurance_type": "car",
+      "vehicle_info": {
+        "vehicle_number": "WVC6711",
+        "ownership_type": "personal",
+        "postcode": "43700",
+        "state": null
+      },
+      "customer_info": {
+        "nric_number": "8",
+        "full_name": null,
+        "phone": "01022317905",
+        "email": "stannero@gmail.com"
+      },
+      "uploaded_documents": [
+        "27e2cfb0-6b1a-4f15-9555-07ee0434d64a.pdf"
+      ],
+      "notes": "sssssssssssss",
+      "status": "new",
+      "quotation": null,
+      "admin_notes": null,
+      "created_at": "2026-03-28T15:18:58.965799+00:00",
+      "updated_at": "2026-03-28T15:18:58.965805+00:00"
+    },
+    {
+      "id": "67e3993e-cea5-4c86-8120-20b97fe12613",
+      "insurance_type": "car",
+      "vehicle_info": {
+        "vehicle_number": "WVC6XXX",
+        "ownership_type": "personal",
+        "postcode": "43700",
+        "state": null
+      },
+      "customer_info": {
+        "nric_number": "8",
+        "full_name": null,
+        "phone": "01022317905",
+        "email": "stannero@gmail.com"
+      },
+      "uploaded_documents": [
+        "a581a842-ad7e-443b-98b2-de96bc212a29.pdf"
+      ],
+      "notes": "aaaaaaa",
+      "status": "quoted",
+      "quotation": {
+        "insurance_provider": "etiqa",
+        "coverage_type": "comprehensive",
+        "sum_insured": 43700.0,
+        "premium_amount": 1000.0,
+        "road_tax_amount": 90.0,
+        "total_amount": 1090.0,
+        "valid_until": "2026-03-28",
+        "remarks": "akakak",
+        "sent_at": "2026-03-28T15:29:30.924058+00:00"
+      },
+      "admin_notes": null,
+      "created_at": "2026-03-28T15:26:12.326220+00:00",
+      "updated_at": "2026-03-28T15:29:30.924081+00:00"
+    },
+    {
+      "id": "e19006c6-158a-4437-a664-9062769daa07",
+      "insurance_type": "car",
+      "vehicle_info": {
+        "vehicle_number": "FLOW1234",
+        "ownership_type": "personal",
+        "postcode": "50000",
+        "state": null
+      },
+      "customer_info": {
+        "nric_number": "901234-01-1234",
+        "full_name": null,
+        "phone": "0123456789",
+        "email": "flow@example.com"
+      },
+      "uploaded_documents": [],
+      "notes": "full flow test",
+      "status": "paid",
+      "quotation": {
+        "insurance_provider": "Etiqa",
+        "coverage_type": "comprehensive",
+        "sum_insured": 50000.0,
+        "premium_amount": 800.0,
+        "road_tax_amount": 90.0,
+        "total_amount": 890.0,
+        "valid_until": "2026-04-30",
+        "remarks": "Flow test quotation",
+        "sent_at": "2026-03-28T15:38:38.073793+00:00"
+      },
+      "admin_notes": null,
+      "created_at": "2026-03-28T15:38:34.979729+00:00",
+      "updated_at": "2026-03-28T15:39:06.107369+00:00",
+      "quotation_email": {
+        "id": "530b194e-d447-41b0-bf6d-7a4588f1dd42",
+        "inquiry_id": "e19006c6-158a-4437-a664-9062769daa07",
+        "to_email": "flow@example.com",
+        "subject": "Quotation for FLOW1234",
+        "body": "Quotation ready for inquiry e19006c6-158a-4437-a664-9062769daa07.\nVehicle: FLOW1234\nProvider: Etiqa\nCoverage: comprehensive\nTotal: RM 890.00\nValid until: 2026-04-30\nRemarks: Flow test quotation",
+        "type": "quotation",
+        "created_at": "2026-03-28T15:38:38.074469+00:00"
+      }
+    }
+  ],
+  "payments": [
+    {
+      "id": "e7a5b5df-476d-47ca-9162-357314668a38",
+      "inquiry_id": "e19006c6-158a-4437-a664-9062769daa07",
+      "amount": 890.0,
+      "currency": "MYR",
+      "status": "paid",
+      "payment_url": "http://localhost:3000/#/payment-result?payment_id=e7a5b5df-476d-47ca-9162-357314668a38&token=ZTdhNWI1ZGYtNDc2ZC00N2NhLTkxNjItMzU3MzE0NjY4YTM4OlRYTl84ODIwQUI0MTk2Njk=&status=pending",
+      "transaction_id": "TXN_8820AB419669",
+      "gateway_response": null,
+      "created_at": "2026-03-28T15:39:00.594980+00:00",
+      "updated_at": "2026-03-28T15:39:04.604133+00:00"
+    }
+  ],
+  "emails": [
+    {
+      "id": "530b194e-d447-41b0-bf6d-7a4588f1dd42",
+      "inquiry_id": "e19006c6-158a-4437-a664-9062769daa07",
+      "to_email": "flow@example.com",
+      "subject": "Quotation for FLOW1234",
+      "body": "Quotation ready for inquiry e19006c6-158a-4437-a664-9062769daa07.\nVehicle: FLOW1234\nProvider: Etiqa\nCoverage: comprehensive\nTotal: RM 890.00\nValid until: 2026-04-30\nRemarks: Flow test quotation",
+      "type": "quotation",
+      "created_at": "2026-03-28T15:38:38.074469+00:00"
+    }
+  ]
+}
