@@ -6,8 +6,8 @@ import InquiryForm from "@/pages/InquiryForm";
 import CheckStatus from "@/pages/CheckStatus";
 import PaymentPage from "@/pages/PaymentPage";
 import PaymentResult from "@/pages/PaymentResult";
+import AdminLogin from "@/pages/AdminLogin";
 import AdminDashboard from "@/pages/AdminDashboard";
-import StaffPanelAccess from "@/pages/StaffPanelAccess";
 
 function App() {
   return (
@@ -19,10 +19,10 @@ function App() {
           <Route path="/check-status" element={<CheckStatus />} />
           <Route path="/payment/:inquiryId" element={<PaymentPage />} />
           <Route path="/payment-result" element={<PaymentResult />} />
-          <Route path="/admin" element={<Navigate to="/staff-panel" replace />} />
-          <Route path="/admin/dashboard" element={<Navigate to="/staff-panel/dashboard" replace />} />
-          <Route path="/staff-panel" element={<StaffPanelAccess />} />
-          <Route path="/staff-panel/dashboard" element={<AdminDashboard />} />
+          <Route path="/admin" element={<AdminLogin />} />
+          <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/staff-panel" element={<Navigate to="/admin" replace />} />
+          <Route path="/staff-panel/dashboard" element={<Navigate to="/admin/dashboard" replace />} />
         </Routes>
       </HashRouter>
       <Toaster position="top-right" richColors />

@@ -17,6 +17,8 @@ import base64
 import json
 from decimal import Decimal, ROUND_HALF_UP
 import requests
+import smtplib
+from email.message import EmailMessage
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -25,6 +27,10 @@ load_dotenv(ROOT_DIR / '.env')
 def _storage_path(env_key: str, default_path: Path) -> Path:
     configured = os.environ.get(env_key)
     return Path(configured) if configured else default_path
+
+
+def _normalized_id(value: str) -> str:
+    return (value or "").strip().lower()
 
 # MongoDB connection
 mongo_url = os.environ.get("MONGO_URL", "mongodb://127.0.0.1:27017")
@@ -86,22 +92,27 @@ async def find_inquiries(query=None):
 
 
 async def find_inquiry_by_id(inquiry_id: str):
+    normalized_id = _normalized_id(inquiry_id)
     if await using_local_storage():
         data = _load_local_storage()
-        return next((item for item in data["inquiries"] if item.get("id") == inquiry_id), None)
-    return await db.inquiries.find_one({"id": inquiry_id}, {"_id": 0})
+        return next(
+            (item for item in data["inquiries"] if _normalized_id(item.get("id")) == normalized_id),
+            None,
+        )
+    return await db.inquiries.find_one({"id": normalized_id}, {"_id": 0})
 
 
 async def update_inquiry(inquiry_id: str, update_data: dict):
+    normalized_id = _normalized_id(inquiry_id)
     if await using_local_storage():
         data = _load_local_storage()
         for index, inquiry in enumerate(data["inquiries"]):
-            if inquiry.get("id") == inquiry_id:
+            if _normalized_id(inquiry.get("id")) == normalized_id:
                 data["inquiries"][index] = {**inquiry, **update_data}
                 _save_local_storage(data)
                 return True
         return False
-    result = await db.inquiries.update_one({"id": inquiry_id}, {"$set": update_data})
+    result = await db.inquiries.update_one({"id": normalized_id}, {"$set": update_data})
     return result.matched_count > 0
 
 
@@ -126,22 +137,27 @@ async def find_payments(query=None):
 
 
 async def find_payment_by_id(payment_id: str):
+    normalized_id = _normalized_id(payment_id)
     if await using_local_storage():
         data = _load_local_storage()
-        return next((item for item in data["payments"] if item.get("id") == payment_id), None)
-    return await db.payments.find_one({"id": payment_id}, {"_id": 0})
+        return next(
+            (item for item in data["payments"] if _normalized_id(item.get("id")) == normalized_id),
+            None,
+        )
+    return await db.payments.find_one({"id": normalized_id}, {"_id": 0})
 
 
 async def update_payment(payment_id: str, update_data: dict):
+    normalized_id = _normalized_id(payment_id)
     if await using_local_storage():
         data = _load_local_storage()
         for index, payment in enumerate(data["payments"]):
-            if payment.get("id") == payment_id:
+            if _normalized_id(payment.get("id")) == normalized_id:
                 data["payments"][index] = {**payment, **update_data}
                 _save_local_storage(data)
                 return True
         return False
-    result = await db.payments.update_one({"id": payment_id}, {"$set": update_data})
+    result = await db.payments.update_one({"id": normalized_id}, {"$set": update_data})
     return result.matched_count > 0
 
 
@@ -162,8 +178,16 @@ STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "").strip()
 STRIPE_PUBLISHABLE_KEY = os.environ.get("STRIPE_PUBLISHABLE_KEY", "").strip()
 STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "").strip()
 STRIPE_API_BASE = "https://api.stripe.com/v1"
-ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'admin')
-ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'admin123')
+FRONTEND_BASE_URL = os.environ.get("FRONTEND_BASE_URL", "https://instaroadtax.my").strip().rstrip("/")
+SMTP_HOST = os.environ.get("SMTP_HOST", "").strip()
+SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
+SMTP_USERNAME = os.environ.get("SMTP_USERNAME", "").strip()
+SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "").strip()
+SMTP_FROM_EMAIL = os.environ.get("SMTP_FROM_EMAIL", SMTP_USERNAME).strip()
+SMTP_FROM_NAME = os.environ.get("SMTP_FROM_NAME", "InstaRoadTax").strip()
+SMTP_USE_TLS = os.environ.get("SMTP_USE_TLS", "true").strip().lower() in {"1", "true", "yes", "on"}
+ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'instaroadtaxadmin')
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'RoadTaxSecure2026!')
 LEGACY_ADMIN_CREDENTIALS = {
     ('admin', 'admin123'),
     ('admin', 'roadtax2026'),
@@ -290,6 +314,91 @@ def verify_webhook_signature(payload: dict, signature: str) -> bool:
     """Verify webhook signature"""
     expected_signature = generate_payment_signature(payload)
     return hmac.compare_digest(expected_signature, signature)
+
+
+def is_email_configured() -> bool:
+    return bool(SMTP_HOST and SMTP_FROM_EMAIL)
+
+
+def build_customer_status_url(inquiry_id: str) -> str:
+    return f"{FRONTEND_BASE_URL}/#/check-status?inquiryId={inquiry_id}"
+
+
+def build_quotation_email_content(inquiry: dict, inquiry_id: str, quotation_data: dict):
+    customer_name = inquiry["customer_info"].get("full_name") or "Customer"
+    vehicle_number = inquiry["vehicle_info"]["vehicle_number"]
+    status_url = build_customer_status_url(inquiry_id)
+    remarks = quotation_data.get("remarks") or "-"
+    coverage = (quotation_data.get("coverage_type") or "").replace("_", " ").title()
+    total_amount = float(quotation_data.get("total_amount") or 0)
+    premium_amount = float(quotation_data.get("premium_amount") or 0)
+    road_tax_amount = float(quotation_data.get("road_tax_amount") or 0)
+    sum_insured = float(quotation_data.get("sum_insured") or 0)
+    valid_until = quotation_data.get("valid_until") or "-"
+
+    subject = f"Quotation Ready for {vehicle_number}"
+    text_body = (
+        f"Hi {customer_name},\n\n"
+        f"Your quotation is now ready for vehicle {vehicle_number}.\n\n"
+        f"Inquiry ID: {inquiry_id.upper()}\n"
+        f"Insurance Provider: {quotation_data.get('insurance_provider')}\n"
+        f"Coverage Type: {coverage}\n"
+        f"Sum Insured: RM {sum_insured:,.2f}\n"
+        f"Premium: RM {premium_amount:,.2f}\n"
+        f"Road Tax: RM {road_tax_amount:,.2f}\n"
+        f"Total Amount: RM {total_amount:,.2f}\n"
+        f"Valid Until: {valid_until}\n"
+        f"Remarks: {remarks}\n\n"
+        f"View your quotation and continue payment here:\n{status_url}\n\n"
+        f"Thank you,\nInstaRoadTax"
+    )
+    html_body = f"""
+    <html>
+      <body style="font-family: Arial, sans-serif; background:#f6f8fc; color:#1f2937; padding:24px;">
+        <div style="max-width:640px; margin:0 auto; background:#ffffff; border-radius:16px; padding:32px; border:1px solid #e5e7eb;">
+          <h1 style="margin:0 0 12px; font-size:28px; color:#111827;">Your quotation is ready</h1>
+          <p style="margin:0 0 24px; font-size:16px;">Hi {customer_name}, your quotation for <strong>{vehicle_number}</strong> is now available.</p>
+          <div style="background:#eef2ff; border:1px solid #c7d2fe; border-radius:12px; padding:20px; margin-bottom:24px;">
+            <p style="margin:0 0 8px;"><strong>Inquiry ID:</strong> {inquiry_id.upper()}</p>
+            <p style="margin:0 0 8px;"><strong>Insurance Provider:</strong> {quotation_data.get('insurance_provider')}</p>
+            <p style="margin:0 0 8px;"><strong>Coverage Type:</strong> {coverage}</p>
+            <p style="margin:0 0 8px;"><strong>Sum Insured:</strong> RM {sum_insured:,.2f}</p>
+            <p style="margin:0 0 8px;"><strong>Premium:</strong> RM {premium_amount:,.2f}</p>
+            <p style="margin:0 0 8px;"><strong>Road Tax:</strong> RM {road_tax_amount:,.2f}</p>
+            <p style="margin:0 0 8px;"><strong>Total Amount:</strong> RM {total_amount:,.2f}</p>
+            <p style="margin:0 0 8px;"><strong>Valid Until:</strong> {valid_until}</p>
+            <p style="margin:0;"><strong>Remarks:</strong> {remarks}</p>
+          </div>
+          <a href="{status_url}" style="display:inline-block; background:#f59e0b; color:#ffffff; text-decoration:none; padding:14px 22px; border-radius:999px; font-weight:600;">
+            View quotation and proceed
+          </a>
+          <p style="margin:24px 0 0; font-size:14px; color:#6b7280;">If the button does not work, open this link:<br><a href="{status_url}">{status_url}</a></p>
+        </div>
+      </body>
+    </html>
+    """.strip()
+    return subject, text_body, html_body, status_url
+
+
+def send_customer_email(to_email: str, subject: str, text_body: str, html_body: str):
+    if not is_email_configured():
+        return {"sent": False, "reason": "smtp_not_configured"}
+
+    message = EmailMessage()
+    message["Subject"] = subject
+    message["From"] = f"{SMTP_FROM_NAME} <{SMTP_FROM_EMAIL}>"
+    message["To"] = to_email
+    message.set_content(text_body)
+    message.add_alternative(html_body, subtype="html")
+
+    with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=30) as server:
+        if SMTP_USE_TLS:
+            server.starttls()
+        if SMTP_USERNAME and SMTP_PASSWORD:
+            server.login(SMTP_USERNAME, SMTP_PASSWORD)
+        server.send_message(message)
+
+    return {"sent": True}
 
 
 def is_stripe_configured() -> bool:
@@ -500,24 +609,40 @@ async def send_quotation(inquiry_id: str, quotation: QuotationCreate):
         "sent_at": datetime.now(timezone.utc).isoformat()
     }
 
+    inquiry_id = inquiry["id"]
     customer_email = inquiry["customer_info"]["email"]
+    subject, email_body_text, email_body_html, status_url = build_quotation_email_content(
+        inquiry,
+        inquiry_id,
+        quotation_data,
+    )
     email_record = EmailRecord(
         inquiry_id=inquiry_id,
         to_email=customer_email,
-        subject=f"Quotation for {inquiry['vehicle_info']['vehicle_number']}",
-        body=(
-            f"Quotation ready for inquiry {inquiry_id}.\n"
-            f"Vehicle: {inquiry['vehicle_info']['vehicle_number']}\n"
-            f"Provider: {quotation.insurance_provider}\n"
-            f"Coverage: {quotation.coverage_type}\n"
-            f"Total: RM {quotation.total_amount:.2f}\n"
-            f"Valid until: {quotation.valid_until or '-'}\n"
-            f"Remarks: {quotation.remarks or '-'}"
-        ),
+        subject=subject,
+        body=email_body_text,
     )
 
     email_doc = email_record.model_dump()
     email_doc["created_at"] = email_doc["created_at"].isoformat()
+    email_doc["status_url"] = status_url
+    email_doc["delivery_status"] = "pending"
+
+    try:
+        delivery_result = send_customer_email(
+            customer_email,
+            subject,
+            email_body_text,
+            email_body_html,
+        )
+        email_doc["delivery_status"] = "sent" if delivery_result.get("sent") else "not_configured"
+        if delivery_result.get("reason"):
+            email_doc["delivery_reason"] = delivery_result["reason"]
+    except Exception as exc:
+        logging.exception("Failed to send quotation email")
+        email_doc["delivery_status"] = "failed"
+        email_doc["delivery_reason"] = str(exc)
+
     await insert_email_record(email_doc)
     
     await update_inquiry(
@@ -531,12 +656,12 @@ async def send_quotation(inquiry_id: str, quotation: QuotationCreate):
     )
     
     # In production, send email to customer here
-    # For now, we just update the status
-    
     return {
         "success": True,
-        "message": "Quotation sent to customer",
-        "quotation": quotation_data
+        "message": "Quotation created and customer notification processed",
+        "quotation": quotation_data,
+        "email_status": email_doc["delivery_status"],
+        "status_url": status_url,
     }
 
 

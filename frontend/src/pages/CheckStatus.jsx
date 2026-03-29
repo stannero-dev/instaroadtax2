@@ -25,7 +25,9 @@ const CheckStatus = () => {
   const [error, setError] = useState(null);
   
   const checkInquiryStatus = async (id) => {
-    if (!id.trim()) {
+    const normalizedId = id.trim();
+
+    if (!normalizedId) {
       toast.error("Please enter your inquiry ID");
       return;
     }
@@ -34,8 +36,9 @@ const CheckStatus = () => {
     setError(null);
     
     try {
-      const response = await axios.get(`${API}/inquiries/check/${id.trim()}`);
+      const response = await axios.get(`${API}/inquiries/check/${normalizedId.toLowerCase()}`);
       setInquiry(response.data);
+      setInquiryId(response.data.inquiry_id.toUpperCase());
     } catch (err) {
       console.error("Error checking status:", err);
       if (err.response?.status === 404) {
@@ -182,6 +185,12 @@ const CheckStatus = () => {
                     </div>
                     {inquiry.quotation.valid_until && (
                       <p className="text-indigo-600 text-xs mt-2">Valid until: {inquiry.quotation.valid_until}</p>
+                    )}
+                    {inquiry.quotation.remarks && (
+                      <div className="pt-2 border-t border-indigo-200">
+                        <p className="text-indigo-700 font-medium mb-1">Remarks</p>
+                        <p className="text-indigo-900">{inquiry.quotation.remarks}</p>
+                      </div>
                     )}
                   </div>
                   

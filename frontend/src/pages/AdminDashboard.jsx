@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, Link, useLocation } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { 
   LayoutDashboard, CreditCard, FileText, LogOut, 
   DollarSign, Clock, CheckCircle2, Send, Car,
@@ -698,7 +698,6 @@ const PaymentsTab = ({ payments, loading, onRefresh, onRefund }) => (
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
-  const location = useLocation();
   const [activeTab, setActiveTab] = useState("dashboard");
   const [stats, setStats] = useState({});
   const [inquiries, setInquiries] = useState([]);
@@ -707,16 +706,13 @@ const AdminDashboard = () => {
   
   useEffect(() => {
     const isAuth = sessionStorage.getItem("adminAuth");
-    const isStaffAccess = sessionStorage.getItem("staffPanelAccess");
-    const usingStaffPanel = location.pathname.startsWith("/staff-panel");
-
-    if (!isAuth && !(usingStaffPanel && isStaffAccess)) {
+    if (!isAuth) {
       navigate("/admin");
       return;
     }
     
     fetchData();
-  }, [location.pathname, navigate]);
+  }, [navigate]);
 
   useEffect(() => {
     fetchData();
@@ -744,12 +740,7 @@ const AdminDashboard = () => {
   
   const handleLogout = () => {
     sessionStorage.removeItem("adminAuth");
-    sessionStorage.removeItem("staffPanelAccess");
     toast.success("Logged out successfully");
-    if (location.pathname.startsWith("/staff-panel")) {
-      navigate("/staff-panel");
-      return;
-    }
     navigate("/admin");
   };
   
